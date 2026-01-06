@@ -1,11 +1,7 @@
 # Ralph-Loop++ .gitignore
 
-# State files (session-specific)
-.claude/ralph-plus.local.md
-.claude/ralph-plus-archive/
-
-# Local settings (may contain secrets)
-.claude/settings.local.json
+# User's local Claude Code config (not part of plugin)
+.claude/
 
 # Node modules (if any)
 node_modules/
