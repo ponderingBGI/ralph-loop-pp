@@ -15,11 +15,13 @@ Ralph-Loop++ extends the [Ralph Wiggum technique](https://ghuntley.com/ralph/) t
 
 ## Installation
 
+Install the plugin:
 ```bash
-# Install the plugin
 claude plugins install github:ponderingBGI/ralph-loop-pp
+```
 
-# Requires the Ralph Wiggum plugin
+Install the required Ralph Wiggum plugin:
+```bash
 claude plugins install ralph-wiggum@claude-plugins-official
 ```
 
