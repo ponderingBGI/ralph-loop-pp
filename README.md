@@ -15,14 +15,19 @@ Ralph-Loop++ extends the [Ralph Wiggum technique](https://ghuntley.com/ralph/) t
 
 ## Installation
 
-Install the required Ralph Wiggum plugin:
+Add the marketplace:
 ```
-/plugin install ralph-wiggum@claude-plugins-official
+/plugin marketplace add ponderingBGI/ralph-loop-pp
 ```
 
 Install ralph-loop++:
 ```
-/plugin install github:ponderingBGI/ralph-loop-pp
+/plugin install ralph-loop-pp@ralph-loop-pp
+```
+
+Install the required Ralph Wiggum plugin:
+```
+/plugin install ralph-wiggum@claude-plugins-official
 ```
 
 ## Usage
