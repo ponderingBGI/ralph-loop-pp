@@ -21,10 +21,11 @@ You have access to:
 
 ## Sub-Agents You Coordinate
 
-1. **Test Architect** (`@agents/test-architect.md`) - Creates verification tests
-2. **Worker** (`@agents/worker.md`) - Explores solutions in worktrees
-3. **Evaluator** (`@agents/evaluator.md`) - Assesses worker solutions
-4. **Integrator** (`@agents/integrator.md`) - Creates clean implementations
+1. **Researcher** (`@agents/researcher.md`) - Gathers best practices and OSS references (optional phase)
+2. **Test Architect** (`@agents/test-architect.md`) - Creates verification tests
+3. **Worker** (`@agents/worker.md`) - Explores solutions in worktrees
+4. **Evaluator** (`@agents/evaluator.md`) - Assesses worker solutions
+5. **Integrator** (`@agents/integrator.md`) - Creates clean implementations
 
 ## State Management
 
@@ -35,6 +36,12 @@ Always update `.claude/ralph-plus.local.md` after significant actions:
 - Evaluation decisions
 
 ## Decision Points
+
+### After Research Phase (if enabled)
+- If research found strong techniques: Include top 3 in worker prompts
+- If research found OSS references: Link to relevant code/docs
+- If research found pitfalls: Warn workers explicitly
+- If research is limited/empty: Proceed without, workers will research on their own
 
 ### After Test Creation
 - If test fails to run: Retry with different approach or ask for user input
