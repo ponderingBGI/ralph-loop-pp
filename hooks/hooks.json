@@ -1,0 +1,17 @@
+{
+  "description": "Ralph-Loop++ hooks for multi-agent orchestration and metric checking",
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/worker-stop-hook.sh",
+            "timeout": 300
+          }
+        ]
+      }
+    ]
+  }
+}

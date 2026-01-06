@@ -1,0 +1,28 @@
+# Ralph-Loop++ .gitignore
+
+# State files (session-specific)
+.claude/ralph-plus.local.md
+.claude/ralph-plus-archive/
+
+# Local settings (may contain secrets)
+.claude/settings.local.json
+
+# Node modules (if any)
+node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+
+# Logs
+*.log
+
+# Windows Zone.Identifier files (WSL)
+*:Zone.Identifier
