@@ -11,10 +11,7 @@
     {
       "name": "ralph-loop-pp",
       "description": "Advanced multi-agent optimization plugin using Ralph Wiggum technique with parallel workers and git worktree isolation",
-      "source": {
-        "source": "url",
-        "url": "https://github.com/ponderingBGI/ralph-loop-pp.git"
-      },
+      "source": "./plugin",
       "category": "productivity"
     }
   ]
