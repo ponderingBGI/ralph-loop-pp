@@ -1,14 +1,11 @@
 {
-  "name": "ralph-loop++",
-  "version": "0.1.0",
+  "name": "ralph-loop-pp",
+  "version": "1.0.0",
   "description": "Advanced multi-agent optimization plugin using Ralph Wiggum technique with parallel workers, git worktree isolation, and measurable goals",
   "author": {
-    "name": "ralph-loop++ contributors"
+    "name": "ponderingBGI"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/ponderingBGI/ralph-loop-pp"
-  },
+  "repository": "https://github.com/ponderingBGI/ralph-loop-pp",
   "license": "MIT",
   "keywords": [
     "optimization",
@@ -16,11 +13,5 @@
     "ralph-wiggum",
     "autonomous",
     "worktree"
-  ],
-  "dependencies": {
-    "plugins": ["ralph-wiggum@claude-plugins-official"]
-  },
-  "engines": {
-    "claude-code": ">=1.0.0"
-  }
+  ]
 }
