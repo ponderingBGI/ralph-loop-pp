@@ -1,14 +1,21 @@
 {
   "name": "ralph-loop-pp",
+  "metadata": {
+    "description": "Ralph-Loop++ plugin for autonomous optimization",
+    "version": "1.0.0"
+  },
   "owner": {
     "name": "ponderingBGI"
   },
-  "description": "Ralph-Loop++ plugin marketplace",
   "plugins": [
     {
       "name": "ralph-loop-pp",
       "description": "Advanced multi-agent optimization plugin using Ralph Wiggum technique with parallel workers and git worktree isolation",
-      "source": "./"
+      "source": {
+        "source": "url",
+        "url": "https://github.com/ponderingBGI/ralph-loop-pp.git"
+      },
+      "category": "productivity"
     }
   ]
 }
