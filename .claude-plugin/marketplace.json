@@ -1,11 +1,12 @@
 {
   "name": "ralph-loop-pp",
+  "owner": "ponderingBGI",
   "description": "Ralph-Loop++ plugin marketplace",
   "plugins": [
     {
       "name": "ralph-loop-pp",
       "description": "Advanced multi-agent optimization plugin using Ralph Wiggum technique with parallel workers and git worktree isolation",
-      "path": "."
+      "source": "."
     }
   ]
 }
