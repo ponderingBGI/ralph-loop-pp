@@ -10,12 +10,45 @@
 
 set -euo pipefail
 
+# ============================================================================
+# Input validation (prevents path traversal attacks)
+# ============================================================================
+validate_session_id() {
+  local id="$1"
+  # Session ID must be: rp-<timestamp> format (e.g., rp-1704567890123)
+  if [[ ! "$id" =~ ^rp-[0-9]{10,15}$ ]]; then
+    echo "Error: Invalid session ID format." >&2
+    echo "Expected format: rp-<timestamp> (e.g., rp-1704567890123)" >&2
+    exit 1
+  fi
+}
+
+validate_worker_num() {
+  local num="$1"
+  # Worker number must be a positive integer (1-99)
+  if [[ ! "$num" =~ ^[1-9][0-9]?$ ]]; then
+    echo "Error: Invalid worker number." >&2
+    echo "Expected: integer 1-99" >&2
+    exit 1
+  fi
+}
+
 SESSION_ID="${1:?Usage: create-worktree.sh <session_id> <worker_num>}"
 WORKER_NUM="${2:?Usage: create-worktree.sh <session_id> <worker_num>}"
+
+# Validate inputs before using them in paths
+validate_session_id "$SESSION_ID"
+validate_worker_num "$WORKER_NUM"
 
 WORKTREE_BASE="/var/tmp/ralph-plus-worktrees"
 WORKTREE_PATH="${WORKTREE_BASE}/${SESSION_ID}/worker-${WORKER_NUM}"
 BRANCH_NAME="ralph-plus/${SESSION_ID}/worker-${WORKER_NUM}"
+
+# Double-check the constructed path is within expected base (defense in depth)
+if [[ ! "$WORKTREE_PATH" =~ ^/var/tmp/ralph-plus-worktrees/rp-[0-9]+/worker-[0-9]+$ ]]; then
+  echo "Error: Constructed path failed validation check" >&2
+  exit 1
+fi
 
 echo "Creating worktree for worker ${WORKER_NUM}..."
 echo "  Path: ${WORKTREE_PATH}"
@@ -54,10 +87,26 @@ if [[ -d "node_modules" ]]; then
   ln -s "$(pwd)/node_modules" "$WORKTREE_PATH/node_modules"
 fi
 
-# Copy .claude directory for plugin access
+# Copy .claude directory for plugin access (but symlink state file to avoid duplication)
 if [[ -d ".claude" ]]; then
-  echo "  Copying .claude configuration..."
-  cp -r .claude "$WORKTREE_PATH/"
+  echo "  Setting up .claude configuration..."
+  mkdir -p "$WORKTREE_PATH/.claude"
+
+  # Copy static config files
+  for config_file in CLAUDE.md agents.md settings.json settings.local.json; do
+    if [[ -f ".claude/$config_file" ]]; then
+      cp ".claude/$config_file" "$WORKTREE_PATH/.claude/"
+      echo "    Copied $config_file"
+    fi
+  done
+
+  # Symlink the state file to the main repo (shared state between workers)
+  local main_repo_root
+  main_repo_root=$(pwd)
+  if [[ -f ".claude/ralph-plus.local.md" ]]; then
+    ln -sf "$main_repo_root/.claude/ralph-plus.local.md" "$WORKTREE_PATH/.claude/ralph-plus.local.md"
+    echo "    Symlinked ralph-plus.local.md (shared state)"
+  fi
 fi
 
 echo "Worktree created successfully!"

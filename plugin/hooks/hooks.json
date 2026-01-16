@@ -3,7 +3,7 @@
   "hooks": {
     "Stop": [
       {
-        "matcher": "*",
+        "matcher": "ralph-loop-pp:*",
         "hooks": [
           {
             "type": "command",

@@ -13,6 +13,74 @@
 
 set -euo pipefail
 
+# ============================================================================
+# Dependency checks
+# ============================================================================
+check_dependencies() {
+  local missing=()
+  command -v bc &>/dev/null || missing+=("bc")
+  command -v jq &>/dev/null || missing+=("jq")
+
+  if [[ ${#missing[@]} -gt 0 ]]; then
+    echo "Error: Missing required dependencies: ${missing[*]}" >&2
+    echo "Install with: apt-get install ${missing[*]}" >&2
+    exit 1
+  fi
+}
+
+check_dependencies
+
+# ============================================================================
+# Safe test command execution (prevents command injection)
+# ============================================================================
+# Allowed test command patterns - commands must start with one of these
+ALLOWED_PREFIXES=(
+  "node "
+  "python "
+  "python3 "
+  "npm "
+  "npx "
+  "pnpm "
+  "bun "
+  "pytest "
+  "jest "
+  "vitest "
+)
+
+validate_test_command() {
+  local cmd="$1"
+
+  # Check for dangerous patterns
+  if [[ "$cmd" =~ [\;\|\&\`\$\(] ]]; then
+    echo "Error: Test command contains disallowed characters (;|&\`\$())" >&2
+    return 1
+  fi
+
+  # Check command starts with allowed prefix
+  for prefix in "${ALLOWED_PREFIXES[@]}"; do
+    if [[ "$cmd" == "$prefix"* ]]; then
+      return 0
+    fi
+  done
+
+  echo "Error: Test command must start with one of: ${ALLOWED_PREFIXES[*]}" >&2
+  return 1
+}
+
+run_test_safely() {
+  local cmd="$1"
+  local timeout_secs="${2:-300}"
+
+  if ! validate_test_command "$cmd"; then
+    echo '{"success": false, "error": "Invalid test command format"}'
+    return 1
+  fi
+
+  # Run without eval - directly execute the command
+  # shellcheck disable=SC2086
+  timeout "$timeout_secs" $cmd 2>&1
+}
+
 # Get the state file path (could be in worktree or main repo)
 find_state_file() {
   # Check if we're in a worktree
@@ -64,12 +132,16 @@ main() {
   echo "=== Ralph-Loop++ Stop Hook ==="
   echo "Running verification test..."
 
-  # Run the test
-  TEST_OUTPUT=$(eval "$TEST_COMMAND" 2>&1) || true
+  # Run the test safely (no eval)
+  TEST_OUTPUT=$(run_test_safely "$TEST_COMMAND" 300) || true
 
-  # Try to parse JSON output
-  METRIC=$(echo "$TEST_OUTPUT" | grep -o '"metric_value"[[:space:]]*:[[:space:]]*[0-9.]*' | grep -o '[0-9.]*$' || echo "")
-  SUCCESS=$(echo "$TEST_OUTPUT" | grep -o '"success"[[:space:]]*:[[:space:]]*true' || echo "")
+  # Try to parse JSON output using jq for safety
+  METRIC=""
+  SUCCESS=""
+  if echo "$TEST_OUTPUT" | jq . &>/dev/null; then
+    METRIC=$(echo "$TEST_OUTPUT" | jq -r '.metric_value // empty')
+    SUCCESS=$(echo "$TEST_OUTPUT" | jq -r 'if .success == true then "true" else empty end')
+  fi
 
   if [[ -z "$METRIC" && -z "$SUCCESS" ]]; then
     echo "Could not parse test output"
@@ -102,14 +174,59 @@ main() {
     echo "GOAL ACHIEVED!"
     # This will be picked up by Ralph Wiggum to stop the loop
     echo "<promise>GOAL ACHIEVED: $METRIC</promise>"
+    # Update state file to record achievement
+    update_state_metric "$STATE_FILE" "$METRIC" "true"
   else
     echo "Goal not yet achieved. Current: $METRIC, Target: $GOAL"
     # Update state file with current metric
-    # (In a real implementation, this would update the YAML properly)
+    update_state_metric "$STATE_FILE" "$METRIC" "false"
   fi
 
   # Always exit 0 to let Ralph Wiggum handle the loop continuation
   exit 0
+}
+
+# ============================================================================
+# State file update with locking (prevents race conditions)
+# ============================================================================
+update_state_metric() {
+  local state_file="$1"
+  local metric="$2"
+  local achieved="${3:-false}"
+  local lock_file="${state_file}.lock"
+
+  (
+    # Acquire exclusive lock with timeout
+    if ! flock -x -w 10 200; then
+      echo "Warning: Could not acquire lock on state file" >&2
+      return 1
+    fi
+
+    # Update state file using simple sed (yq not always available)
+    local timestamp
+    timestamp=$(date -Iseconds)
+
+    # Update current_metric if line exists
+    if grep -q "^current_metric:" "$state_file" 2>/dev/null; then
+      sed -i "s/^current_metric:.*/current_metric: $metric/" "$state_file"
+    fi
+
+    # Update updated_at if line exists
+    if grep -q "^updated_at:" "$state_file" 2>/dev/null; then
+      sed -i "s/^updated_at:.*/updated_at: \"$timestamp\"/" "$state_file"
+    fi
+
+    # Update best_metric if this is better (for decrease direction)
+    local current_best
+    current_best=$(grep "^best_metric:" "$state_file" 2>/dev/null | sed 's/^best_metric: *//' || echo "")
+    if [[ -n "$current_best" && -n "$metric" ]]; then
+      # Check if new metric is better (assuming decrease is better for now)
+      if (( $(echo "$metric < $current_best" | bc -l) )); then
+        sed -i "s/^best_metric:.*/best_metric: $metric/" "$state_file"
+      fi
+    fi
+
+  ) 200>"$lock_file"
 }
 
 main "$@"

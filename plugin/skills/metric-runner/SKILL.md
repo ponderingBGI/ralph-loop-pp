@@ -8,20 +8,34 @@ Execute the verification test created by the Test Architect and parse the result
 
 ## Running a Test
 
+**IMPORTANT:** Never use `eval` or `bash -c` to execute test commands. Use the safe execution script instead.
+
 ```bash
+# Use the run-test.sh script for safe execution
 TEST_COMMAND="$1"
 WORKING_DIR="$2"
 
-cd "$WORKING_DIR"
-
-# Run test and capture output
-OUTPUT=$(eval "$TEST_COMMAND" 2>&1)
+# Safe execution (validates command format, no eval)
+OUTPUT=$("${CLAUDE_PLUGIN_ROOT}/scripts/run-test.sh" "$TEST_COMMAND" "$WORKING_DIR")
 EXIT_CODE=$?
 
-# Output both the JSON result and exit code
 echo "$OUTPUT"
 exit $EXIT_CODE
 ```
+
+### Allowed Test Commands
+
+The following command prefixes are allowed:
+- `node <script>`
+- `python <script>` / `python3 <script>`
+- `npm test` / `npx <command>`
+- `pnpm <command>`
+- `bun <command>`
+- `pytest <args>`
+- `jest <args>`
+- `vitest <args>`
+
+Commands containing shell metacharacters (`;`, `|`, `&`, `` ` ``, `$`, `(`) are rejected for security.
 
 ## Parsing Results
 

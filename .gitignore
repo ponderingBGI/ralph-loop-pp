@@ -22,3 +22,7 @@ Thumbs.db
 
 # Windows Zone.Identifier files (WSL)
 *:Zone.Identifier
+
+# Auto Claude data directory
+.auto-claude/
+.autoclaude/

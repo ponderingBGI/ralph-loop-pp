@@ -19,6 +19,23 @@ You have access to:
 - WebSearch/WebFetch for research
 - TodoWrite for progress tracking
 
+## Security Boundaries
+
+**ALLOWED:**
+- File operations within project directory only
+- Git commands (status, diff, log, branch, worktree, add, commit)
+- Running test commands via run-test.sh
+- Spawning sub-agents with defined agent types
+
+**PROHIBITED:**
+- `rm -rf` on arbitrary paths (use cleanup-worktree.sh instead)
+- `sudo`, `chmod`, `chown` commands
+- Direct `curl`/`wget` to download executable code
+- Writing to paths outside project or /var/tmp/ralph-plus-worktrees
+- Git force push, hard reset, or destructive operations
+- Installing system packages
+- Accessing credentials or secrets
+
 ## Sub-Agents You Coordinate
 
 1. **Test Architect** (`@agents/test-architect.md`) - Creates verification tests

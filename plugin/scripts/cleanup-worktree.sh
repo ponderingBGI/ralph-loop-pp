@@ -12,6 +12,58 @@ set -euo pipefail
 
 WORKTREE_BASE="/var/tmp/ralph-plus-worktrees"
 
+# ============================================================================
+# Input validation (prevents path traversal attacks)
+# ============================================================================
+validate_session_id() {
+  local id="$1"
+  # Session ID must be: rp-<timestamp> format (e.g., rp-1704567890123)
+  if [[ ! "$id" =~ ^rp-[0-9]{10,15}$ ]]; then
+    echo "Error: Invalid session ID format." >&2
+    echo "Expected format: rp-<timestamp> (e.g., rp-1704567890123)" >&2
+    exit 1
+  fi
+}
+
+validate_worker_num() {
+  local num="$1"
+  # Worker number must be a positive integer (1-99)
+  if [[ ! "$num" =~ ^[1-9][0-9]?$ ]]; then
+    echo "Error: Invalid worker number." >&2
+    echo "Expected: integer 1-99" >&2
+    exit 1
+  fi
+}
+
+# ============================================================================
+# Safe rm function (prevents accidental deletion of important paths)
+# ============================================================================
+safe_rm() {
+  local path="$1"
+
+  # Never delete empty or root paths
+  if [[ -z "$path" || "$path" == "/" ]]; then
+    echo "Error: Refusing to delete empty or root path" >&2
+    return 1
+  fi
+
+  # Resolve to absolute path
+  local real_path
+  real_path=$(realpath "$path" 2>/dev/null) || {
+    echo "Warning: Cannot resolve path: $path" >&2
+    return 1
+  }
+
+  # Verify path is within expected worktree base
+  if [[ ! "$real_path" =~ ^/var/tmp/ralph-plus-worktrees(/|$) ]]; then
+    echo "Error: Refusing to delete path outside worktree base: $real_path" >&2
+    return 1
+  fi
+
+  # Safe to delete
+  rm -rf -- "$path"
+}
+
 cleanup_worktree() {
   local path="$1"
   local branch
@@ -25,7 +77,7 @@ cleanup_worktree() {
   branch=$(git -C "$path" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
 
   echo "  Removing worktree: $path"
-  git worktree remove "$path" --force 2>/dev/null || rm -rf "$path"
+  git worktree remove "$path" --force 2>/dev/null || safe_rm "$path"
 
   if [[ -n "$branch" && "$branch" == ralph-plus/* ]]; then
     echo "  Deleting branch: $branch"
@@ -52,7 +104,7 @@ cleanup_session() {
   done
 
   # Remove session directory
-  rm -rf "$session_path"
+  safe_rm "$session_path"
 
   # Clean up any orphaned branches
   git branch | grep "ralph-plus/${session_id}" | xargs -I {} git branch -D {} 2>/dev/null || true
@@ -70,7 +122,7 @@ cleanup_all() {
   done
 
   # Remove base directory
-  rm -rf "$WORKTREE_BASE"
+  safe_rm "$WORKTREE_BASE"
 
   # Clean up all ralph-plus branches
   git branch | grep "ralph-plus/" | xargs -I {} git branch -D {} 2>/dev/null || true
@@ -97,7 +149,11 @@ case "${1:-}" in
     SESSION_ID="$1"
     WORKER_NUM="${2:-}"
 
+    # Validate inputs before using them in paths
+    validate_session_id "$SESSION_ID"
+
     if [[ -n "$WORKER_NUM" ]]; then
+      validate_worker_num "$WORKER_NUM"
       # Clean up specific worker
       cleanup_worktree "${WORKTREE_BASE}/${SESSION_ID}/worker-${WORKER_NUM}"
     else
