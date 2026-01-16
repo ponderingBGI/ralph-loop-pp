@@ -174,6 +174,27 @@ workers:
 - [Ralph Wiggum plugin](https://github.com/anthropics/claude-plugins-official/tree/main/plugins/ralph-wiggum)
 - Git (for worktree management)
 
+### System Dependencies
+
+The plugin requires these command-line tools:
+
+| Tool | Purpose |
+|------|---------|
+| `jq` | JSON parsing in test output |
+| `bc` | Floating-point metric comparisons |
+
+**Linux (Ubuntu/Debian):**
+```bash
+apt-get install jq bc
+```
+
+**macOS:**
+```bash
+brew install jq bc
+```
+
+Note: Some advanced features use `flock` and `timeout` which are Linux-specific. On macOS, the plugin uses fallback implementations.
+
 ## Recommended MCP Servers
 
 For best research capabilities:
@@ -199,7 +220,7 @@ Use `/optimize <task>` to start a new optimization.
 Check `/optimize-status` for current state. Workers might be stuck on research or hitting rate limits.
 
 ### Worktrees not cleaning up
-Run: `./scripts/cleanup-worktree.sh --all`
+Run: `./plugin/scripts/cleanup-worktree.sh --all`
 
 ### Test creation fails
 The test architect couldn't create a suitable test. Try being more specific about what to measure.

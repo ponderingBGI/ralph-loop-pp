@@ -101,7 +101,6 @@ if [[ -d ".claude" ]]; then
   done
 
   # Symlink the state file to the main repo (shared state between workers)
-  local main_repo_root
   main_repo_root=$(pwd)
   if [[ -f ".claude/ralph-plus.local.md" ]]; then
     ln -sf "$main_repo_root/.claude/ralph-plus.local.md" "$WORKTREE_PATH/.claude/ralph-plus.local.md"

@@ -20,13 +20,20 @@ Cancel any active optimization session and clean up resources.
 
 ## Cleanup Process
 
+Use the cleanup script for safe worktree removal:
 ```bash
-# Find and remove worktrees
-git worktree list | grep "ralph-plus" | awk '{print $1}' | xargs -I {} git worktree remove {} --force 2>/dev/null || true
+# If session ID is known (from state file):
+./plugin/scripts/cleanup-worktree.sh {session_id}
 
-# Clean up branches
-git branch | grep "ralph-plus/" | xargs -I {} git branch -D {} 2>/dev/null || true
+# Or to clean up ALL ralph-loop++ worktrees:
+./plugin/scripts/cleanup-worktree.sh --all
 ```
+
+The cleanup script handles:
+- Safe path validation (prevents accidental deletion)
+- Proper worktree removal
+- Branch cleanup with whitespace handling
+- Cross-platform compatibility
 
 ## State Update
 

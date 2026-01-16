@@ -40,12 +40,12 @@ Best so far: {best_metric}
 Workers:
   - Worker 1: {worktree_path}
     Branch: {branch}
-    Iterations: {iterations}/20
+    Iterations: {iterations}/{max_iterations}
     Best metric: {best_metric}
 
   - Worker 2: {worktree_path}
     Branch: {branch}
-    Iterations: {iterations}/20
+    Iterations: {iterations}/{max_iterations}
     Best metric: {best_metric}
 
 Progress:

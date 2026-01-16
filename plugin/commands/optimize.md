@@ -30,6 +30,11 @@ Extract from the user's natural language:
 2. Create state file at `.claude/ralph-plus.local.md`
 3. Determine number of parallel workers (default: 2)
 
+**Important**: This workflow requires the `ralph-wiggum` plugin for worker iteration loops. If not available, inform the user and suggest installing it with:
+```
+/plugin install ralph-wiggum@claude-plugins-official
+```
+
 ## Phase 3: Create Verification Test
 
 Spawn the **Test Architect Agent** to:
@@ -40,10 +45,8 @@ Spawn the **Test Architect Agent** to:
    - OR JSON with boolean: `{"success": true/false, "reason": "<reason>"}`
 4. Run baseline measurement and record it
 
-Use this prompt for the test architect:
+Use the Task tool to spawn the test architect agent with subagent_type: "ralph-loop-pp:test-architect":
 ```
-@agents/test-architect.md
-
 Create a verification test for the following optimization goal:
 - Target: {extracted target}
 - Metric: {extracted metric}
@@ -105,14 +108,20 @@ Create `.claude/ralph-plus.local.md`:
 active: true
 session_id: "rp-{id}"
 started_at: "{timestamp}"
+updated_at: "{timestamp}"
 task: "{user's original request}"
 target: "{extracted target}"
 metric: "{extracted metric}"
 goal: "{extracted goal}"
 direction: "decrease|increase"
 phase: "initialization"
+test_file: ""
+test_command: ""
 baseline_metric: null
+current_metric: null
+best_metric: null
 workers: []
+max_iterations: 20
 ---
 
 # Optimization Session: {session_id}

@@ -30,10 +30,10 @@ You are a **Worker Agent** for ralph-loop++. You explore and implement solutions
 
 ## Your Task
 
-**Goal**: $GOAL
-**Metric**: $METRIC
-**Target**: $TARGET
-**Test Command**: $TEST_COMMAND
+**Goal**: {goal}
+**Metric**: {metric}
+**Target**: {target}
+**Test Command**: {test_command}
 
 ## Iteration Strategy
 

@@ -13,6 +13,31 @@ set -euo pipefail
 WORKTREE_BASE="/var/tmp/ralph-plus-worktrees"
 
 # ============================================================================
+# Cross-platform realpath (macOS doesn't have realpath by default)
+# ============================================================================
+portable_realpath() {
+  local path="$1"
+  if command -v realpath &>/dev/null; then
+    realpath "$path"
+  elif command -v grealpath &>/dev/null; then
+    # macOS with coreutils
+    grealpath "$path"
+  else
+    # Fallback using Python or pwd
+    if [[ -d "$path" ]]; then
+      (cd "$path" && pwd -P)
+    elif [[ -f "$path" ]]; then
+      local dir base
+      dir=$(dirname "$path")
+      base=$(basename "$path")
+      echo "$(cd "$dir" && pwd -P)/$base"
+    else
+      echo "$path"
+    fi
+  fi
+}
+
+# ============================================================================
 # Input validation (prevents path traversal attacks)
 # ============================================================================
 validate_session_id() {
@@ -49,7 +74,7 @@ safe_rm() {
 
   # Resolve to absolute path
   local real_path
-  real_path=$(realpath "$path" 2>/dev/null) || {
+  real_path=$(portable_realpath "$path" 2>/dev/null) || {
     echo "Warning: Cannot resolve path: $path" >&2
     return 1
   }
@@ -106,8 +131,8 @@ cleanup_session() {
   # Remove session directory
   safe_rm "$session_path"
 
-  # Clean up any orphaned branches
-  git branch | grep "ralph-plus/${session_id}" | xargs -I {} git branch -D {} 2>/dev/null || true
+  # Clean up any orphaned branches (strip leading whitespace from git branch output)
+  git branch | grep "ralph-plus/${session_id}" | sed 's/^[* ]*//' | xargs -I {} git branch -D {} 2>/dev/null || true
 
   echo "Session cleanup complete!"
 }
@@ -124,8 +149,8 @@ cleanup_all() {
   # Remove base directory
   safe_rm "$WORKTREE_BASE"
 
-  # Clean up all ralph-plus branches
-  git branch | grep "ralph-plus/" | xargs -I {} git branch -D {} 2>/dev/null || true
+  # Clean up all ralph-plus branches (strip leading whitespace from git branch output)
+  git branch | grep "ralph-plus/" | sed 's/^[* ]*//' | xargs -I {} git branch -D {} 2>/dev/null || true
 
   # Prune worktree references
   git worktree prune

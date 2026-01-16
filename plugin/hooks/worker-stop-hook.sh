@@ -31,6 +31,61 @@ check_dependencies() {
 check_dependencies
 
 # ============================================================================
+# Cross-platform compatibility helpers
+# ============================================================================
+# Portable sed in-place edit (macOS requires empty string for -i)
+sed_inplace() {
+  if [[ "$(uname)" == "Darwin" ]]; then
+    sed -i '' "$@"
+  else
+    sed -i "$@"
+  fi
+}
+
+# Portable ISO 8601 timestamp (macOS date doesn't support -Iseconds)
+iso_timestamp() {
+  if date -Iseconds &>/dev/null 2>&1; then
+    date -Iseconds
+  else
+    # macOS fallback
+    date -u +"%Y-%m-%dT%H:%M:%S%z"
+  fi
+}
+
+# Portable file locking (flock not available on macOS by default)
+acquire_lock() {
+  local lock_file="$1"
+  local timeout="${2:-10}"
+
+  if command -v flock &>/dev/null; then
+    # Linux: use flock
+    exec 200>"$lock_file"
+    flock -x -w "$timeout" 200
+  else
+    # macOS fallback: use mkdir as lock (atomic operation)
+    local lock_dir="${lock_file}.d"
+    local start_time=$(date +%s)
+    while ! mkdir "$lock_dir" 2>/dev/null; do
+      if (( $(date +%s) - start_time > timeout )); then
+        return 1
+      fi
+      sleep 0.1
+    done
+    # Store our PID so we can clean up
+    echo $$ > "$lock_dir/pid"
+  fi
+}
+
+release_lock() {
+  local lock_file="$1"
+  local lock_dir="${lock_file}.d"
+
+  if [[ -d "$lock_dir" ]]; then
+    rm -rf "$lock_dir"
+  fi
+}
+
+# ============================================================================
 # Safe test command execution (prevents command injection)
 # ============================================================================
 # Allowed test command patterns - commands must start with one of these
@@ -195,38 +250,49 @@ update_state_metric() {
   local achieved="${3:-false}"
   local lock_file="${state_file}.lock"
 
-  (
-    # Acquire exclusive lock with timeout
-    if ! flock -x -w 10 200; then
-      echo "Warning: Could not acquire lock on state file" >&2
-      return 1
+  # Acquire exclusive lock with timeout (cross-platform)
+  if ! acquire_lock "$lock_file" 10; then
+    echo "Warning: Could not acquire lock on state file" >&2
+    return 1
+  fi
+
+  # Ensure lock is released on exit
+  trap 'release_lock "$lock_file"' EXIT
+
+  # Update state file using portable sed
+  local timestamp
+  timestamp=$(iso_timestamp)
+
+  # Update current_metric if line exists
+  if grep -q "^current_metric:" "$state_file" 2>/dev/null; then
+    sed_inplace "s/^current_metric:.*/current_metric: $metric/" "$state_file"
+  fi
+
+  # Update updated_at if line exists
+  if grep -q "^updated_at:" "$state_file" 2>/dev/null; then
+    sed_inplace "s/^updated_at:.*/updated_at: \"$timestamp\"/" "$state_file"
+  fi
+
+  # Update best_metric if this is better (respects direction from state file)
+  local current_best direction is_better
+  current_best=$(grep "^best_metric:" "$state_file" 2>/dev/null | sed 's/^best_metric: *//' || echo "")
+  direction=$(grep "^direction:" "$state_file" 2>/dev/null | sed 's/^direction: *//' | sed 's/"//g' || echo "decrease")
+  if [[ -n "$current_best" && -n "$metric" ]]; then
+    # Check if new metric is better based on direction
+    is_better=0
+    if [[ "$direction" == "increase" ]]; then
+      (( $(echo "$metric > $current_best" | bc -l) )) && is_better=1
+    else
+      (( $(echo "$metric < $current_best" | bc -l) )) && is_better=1
     fi
-
-    # Update state file using simple sed (yq not always available)
-    local timestamp
-    timestamp=$(date -Iseconds)
-
-    # Update current_metric if line exists
-    if grep -q "^current_metric:" "$state_file" 2>/dev/null; then
-      sed -i "s/^current_metric:.*/current_metric: $metric/" "$state_file"
+    if [[ "$is_better" -eq 1 ]]; then
+      sed_inplace "s/^best_metric:.*/best_metric: $metric/" "$state_file"
     fi
+  fi
 
-    # Update updated_at if line exists
-    if grep -q "^updated_at:" "$state_file" 2>/dev/null; then
-      sed -i "s/^updated_at:.*/updated_at: \"$timestamp\"/" "$state_file"
-    fi
-
-    # Update best_metric if this is better (for decrease direction)
-    local current_best
-    current_best=$(grep "^best_metric:" "$state_file" 2>/dev/null | sed 's/^best_metric: *//' || echo "")
-    if [[ -n "$current_best" && -n "$metric" ]]; then
-      # Check if new metric is better (assuming decrease is better for now)
-      if (( $(echo "$metric < $current_best" | bc -l) )); then
-        sed -i "s/^best_metric:.*/best_metric: $metric/" "$state_file"
-      fi
-    fi
-
-  ) 200>"$lock_file"
+  # Release lock
+  release_lock "$lock_file"
+  trap - EXIT
 }
 
 main "$@"
